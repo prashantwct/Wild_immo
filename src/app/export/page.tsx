@@ -99,7 +99,7 @@ function generateFullReport(
         }
         
         const measurementStr = Object.entries(m.measurements)
-          .filter(([_, value]) => value !== undefined && value !== null && value !== '' && value !== 0)
+          .filter(([_, value]) => value !== undefined && value !== null && String(value) !== '' && value !== 0)
           .map(([key, value]) => {
             // Format specific measurements with units
             const formattedKey = key
