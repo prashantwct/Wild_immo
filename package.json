@@ -1,0 +1,37 @@
+{
+  "name": "wildlife-immobilization-offline-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@heroicons/react": "2.1.1",
+    "@radix-ui/react-dialog": "1.0.5",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-select": "1.1.2",
+    "@radix-ui/react-toast": "^1.2.14",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.327.0",
+    "next": "14.2.3",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "3.4.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.16",
+    "@types/node": "20.11.30",
+    "@types/react": "18.2.14",
+    "autoprefixer": "10.4.17",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.3",
+    "postcss": "8.4.38",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "5.4.5"
+  }
+}

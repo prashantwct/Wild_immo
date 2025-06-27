@@ -1,0 +1,386 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { PlusIcon, CalculatorIcon, PlusCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Animal, DrugDosage, SpeciesProtocol } from '@/types';
+import { calculateAllDrugs, getSpeciesProtocol, SPECIES_PROTOCOLS, AVAILABLE_DRUGS } from '@/utils/drugCalculations';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+export default function CalculatorPage() {
+  const router = useRouter();
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [selectedAnimalId, setSelectedAnimalId] = useState<string>('');
+  const [species, setSpecies] = useState<string>('');
+  const [weight, setWeight] = useState<string>('');
+  const [protocol, setProtocol] = useState<SpeciesProtocol | null>(null);
+  const [results, setResults] = useState<Array<{
+    drug: string;
+    concentration: number;
+    doseMg: number;
+    volumeMl: number;
+    route: string;
+  }>>([]);
+  
+  // Custom drug selection
+  const [customDrugs, setCustomDrugs] = useState<Array<{
+    drugName: string;
+    concentration: string;
+    minDose: string;
+    maxDose: string;
+    route: string;
+  }>>([]);
+  
+  const [useCustomDrugs, setUseCustomDrugs] = useState(false);
+
+  // Load animals from localStorage
+  useEffect(() => {
+    const savedAnimals = localStorage.getItem('animals');
+    if (savedAnimals) {
+      setAnimals(JSON.parse(savedAnimals));
+    }
+  }, []);
+
+  // Update protocol when species changes
+  useEffect(() => {
+    if (species) {
+      const selectedProtocol = getSpeciesProtocol(species);
+      setProtocol(selectedProtocol || null);
+    } else {
+      setProtocol(null);
+    }
+    setResults([]);
+  }, [species]);
+
+  // Update form when animal is selected
+  useEffect(() => {
+    if (selectedAnimalId && animals.length > 0) {
+      const animal = animals.find(a => a.id === selectedAnimalId);
+      if (animal) {
+        setSpecies(animal.species);
+        setWeight(animal.estimatedWeight?.toString() || '');
+      }
+    }
+  }, [selectedAnimalId, animals]);
+
+  const addCustomDrug = () => {
+    // Use the first drug from AVAILABLE_DRUGS as default
+    const defaultDrugName = Object.values(AVAILABLE_DRUGS)[0] || '';
+    
+    setCustomDrugs([...customDrugs, {
+      drugName: defaultDrugName,
+      concentration: '100',
+      minDose: '0.1',
+      maxDose: '1',
+      route: 'IM'
+    }]);
+    setUseCustomDrugs(true);
+  };
+
+  const removeCustomDrug = (index: number) => {
+    setCustomDrugs(customDrugs.filter((_, i) => i !== index));
+  };
+
+  const updateCustomDrug = (index: number, field: string, value: string) => {
+    const updatedDrugs = [...customDrugs];
+    updatedDrugs[index] = { ...updatedDrugs[index], [field]: value };
+    setCustomDrugs(updatedDrugs);
+  };
+
+  const calculateDosages = () => {
+    if (!weight || (useCustomDrugs && customDrugs.length === 0)) {
+      alert('Please enter weight and at least one drug');
+      return;
+    }
+
+    try {
+      const weightValue = parseFloat(weight);
+      if (isNaN(weightValue) || weightValue <= 0) {
+        alert('Please enter a valid weight');
+        return;
+      }
+
+      let formattedResults = [];
+      
+      if (useCustomDrugs) {
+        // Calculate custom drugs
+        formattedResults = customDrugs.map(drug => {
+          const concentration = parseFloat(drug.concentration);
+          const minDose = parseFloat(drug.minDose);
+          const maxDose = parseFloat(drug.maxDose);
+          const avgDose = (minDose + maxDose) / 2;
+          const doseMg = avgDose * weightValue;
+          const volumeMl = doseMg / concentration;
+          
+          return {
+            drug: drug.drugName,
+            concentration: concentration,
+            doseMg: parseFloat(doseMg.toFixed(2)),
+            volumeMl: parseFloat(volumeMl.toFixed(2)),
+            route: drug.route
+          };
+        });
+      } else if (species) {
+        // Use protocol-based calculation
+        const calculatedResults = calculateAllDrugs(species, weightValue);
+        formattedResults = calculatedResults.map(result => ({
+          drug: result.drug.name,
+          concentration: result.drug.concentration,
+          doseMg: result.doseMg,
+          volumeMl: result.volumeMl,
+          route: result.drug.route
+        }));
+      }
+      
+      setResults(formattedResults);
+    } catch (error) {
+      console.error('Error calculating dosages:', error);
+      alert('An error occurred while calculating dosages');
+    }
+  };
+
+  const handleAnimalChange = (id: string) => {
+    setSelectedAnimalId(id);
+    if (id === 'new') {
+      router.push('/animals');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Drug Calculator</h1>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="animal">Select Animal (Optional)</Label>
+            <Select
+              value={selectedAnimalId}
+              onValueChange={handleAnimalChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select an animal or enter details below" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="new">
+                  <div className="flex items-center">
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    <span>Add New Animal</span>
+                  </div>
+                </SelectItem>
+                {animals.map((animal) => (
+                  <SelectItem key={animal.id} value={animal.id}>
+                    {animal.name || animal.species} {animal.identifier ? `(${animal.identifier})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="species">Species *</Label>
+            <Select
+              value={species}
+              onValueChange={setSpecies}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select species" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.keys(SPECIES_PROTOCOLS).map((speciesKey) => (
+                  <SelectItem key={speciesKey} value={speciesKey}>
+                    {SPECIES_PROTOCOLS[speciesKey].speciesName} ({speciesKey})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="weight">Weight (kg) *</Label>
+            <Input
+              type="number"
+              id="weight"
+              value={weight}
+              onChange={e => setWeight(e.target.value)}
+              min="0"
+              step="0.1"
+              required
+            />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input 
+              type="checkbox" 
+              id="useCustom" 
+              checked={useCustomDrugs} 
+              onChange={(e) => setUseCustomDrugs(e.target.checked)} 
+              className="w-4 h-4"
+            />
+            <Label htmlFor="useCustom" className="cursor-pointer">Use custom drug combination</Label>
+          </div>
+
+          {useCustomDrugs && (
+            <div className="space-y-4 border p-4 rounded">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold">Custom Drug Combination</h3>
+                <Button onClick={addCustomDrug} size="sm" variant="outline">
+                  <PlusCircleIcon className="h-4 w-4 mr-1" /> Add Drug
+                </Button>
+              </div>
+              
+              {customDrugs.map((drug, index) => (
+                <div key={index} className="space-y-3 pt-3 border-t">
+                  <div className="flex justify-between">
+                    <h4>Drug {index + 1}</h4>
+                    <button 
+                      onClick={() => removeCustomDrug(index)}
+                      className="text-red-500 hover:text-red-700"
+                      type="button"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <Label>Drug</Label>
+                      <Select 
+                        value={drug.drugName} 
+                        onValueChange={(value) => updateCustomDrug(index, 'drugName', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select drug" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(AVAILABLE_DRUGS).map((drugName) => (
+                            <SelectItem key={drugName} value={drugName}>{drugName}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label>Concentration (mg/ml)</Label>
+                        <Input 
+                          type="number" 
+                          value={drug.concentration} 
+                          onChange={(e) => updateCustomDrug(index, 'concentration', e.target.value)}
+                          min="0"
+                          step="0.1"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-1">
+                        <div>
+                          <Label>Min Dose</Label>
+                          <Input 
+                            type="number" 
+                            value={drug.minDose} 
+                            onChange={(e) => updateCustomDrug(index, 'minDose', e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                        <div>
+                          <Label>Max Dose</Label>
+                          <Input 
+                            type="number" 
+                            value={drug.maxDose} 
+                            onChange={(e) => updateCustomDrug(index, 'maxDose', e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Route</Label>
+                      <Select 
+                        value={drug.route} 
+                        onValueChange={(value) => updateCustomDrug(index, 'route', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="IM">IM (Intramuscular)</SelectItem>
+                          <SelectItem value="IV">IV (Intravenous)</SelectItem>
+                          <SelectItem value="SC">SC (Subcutaneous)</SelectItem>
+                          <SelectItem value="PO">PO (Oral)</SelectItem>
+                          <SelectItem value="IN">IN (Intranasal)</SelectItem>
+                          <SelectItem value="IM/IV">IM/IV (Combined)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <Button 
+            onClick={calculateDosages} 
+            className="mt-4" 
+            disabled={!weight || (useCustomDrugs && customDrugs.length === 0)}
+          >
+            <CalculatorIcon className="h-4 w-4 mr-2" />
+            Calculate Dosages
+          </Button>
+        </div>
+
+        <div>
+          {results.length > 0 ? (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Calculated Dosages</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drug</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dose (mg)</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Volume (ml)</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {results.map((result, index) => (
+                      <tr key={index}>
+                        <td className="px-4 py-2 whitespace-nowrap">{result.drug} ({result.concentration} mg/ml)</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{result.doseMg.toFixed(2)}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{result.volumeMl.toFixed(2)}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{result.route}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-4 text-sm text-gray-500">
+                Weight: {weight} kg | {useCustomDrugs ? 'Custom Drug Protocol' : `Species: ${SPECIES_PROTOCOLS[species]?.speciesName}`}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-gray-50 shadow-sm rounded-lg p-6 flex flex-col items-center justify-center h-64 text-center">
+              <CalculatorIcon className="h-12 w-12 text-gray-400 mb-2" />
+              <h3 className="text-lg font-medium text-gray-900">No dosages calculated yet</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Select an animal or species, enter weight, and calculate dosages
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

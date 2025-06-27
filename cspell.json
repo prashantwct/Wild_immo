@@ -1,0 +1,19 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "brpm",
+    "Morphometric",
+    "pdfmake",
+    "subadult",
+    "intercanine"
+  ],
+  "flagWords": [],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/.git/**"
+  ]
+}
