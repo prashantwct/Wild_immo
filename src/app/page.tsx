@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MobileOptimizationDemo } from '@/components/MobileOptimizationDemo';
 
 export default function Home() {
   const features = [
@@ -71,6 +72,9 @@ export default function Home() {
             This application works offline. All your data is stored locally and will sync when you're back online.
           </p>
         </div>
+      </div>
+      <div className="mt-16">
+        <MobileOptimizationDemo />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import './mobile.css';
 import { Navigation } from '@/components/Navigation';
 import { Toaster } from '@/components/toaster';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -10,8 +11,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: 'white' },
     { media: '(prefers-color-scheme: dark)', color: 'black' },
